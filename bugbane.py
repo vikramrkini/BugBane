@@ -1,5 +1,6 @@
 import ast
 import copy
+import inspect
 import sys
 import subprocess
 import os
@@ -86,7 +87,31 @@ def replace_import_statement(original_file ,test_file, mutant_file,reverse = Fal
 
             f.write(line)
 
-def run_tests(mutant_file, test_file,mutants):
+# def run_tests(mutant_file, test_file):
+#     # Load the test cases from the test file
+#     spec = importlib.util.spec_from_file_location("test_module", test_file)
+#     test_module = importlib.util.module_from_spec(spec)
+#     spec.loader.exec_module(test_module)
+
+#     # Load the mutant code as a module
+#     spec = importlib.util.spec_from_file_location("mutant_module", mutant_file)
+#     mutant_module = importlib.util.module_from_spec(spec)
+#     spec.loader.exec_module(mutant_module)
+
+#     # Run the tests and calculate the mutation score
+#     loader = unittest.TestLoader()
+#     suite = loader.loadTestsFromModule(test_module)
+#     runner = unittest.TextTestRunner()
+#     result = runner.run(suite)
+
+#     print(result)
+#     for test, output in result.failures + result.errors:
+#         print(f"Output of {test}:\n{output}")
+import importlib.util
+import unittest
+from unittest.mock import patch
+
+def run_tests(mutant_file, test_file):
     # Load the test cases from the test file
     spec = importlib.util.spec_from_file_location("test_module", test_file)
     test_module = importlib.util.module_from_spec(spec)
@@ -100,12 +125,19 @@ def run_tests(mutant_file, test_file,mutants):
     # Run the tests and calculate the mutation score
     loader = unittest.TestLoader()
     suite = loader.loadTestsFromModule(test_module)
+
+    # Replace original code with mutant code using patch
+    for func_name, func_obj in inspect.getmembers(mutant_module, inspect.isfunction):
+        # print(func_name)
+        with patch.object(test_module, func_name, side_effect=func_obj):
+            pass
+
     runner = unittest.TextTestRunner()
     result = runner.run(suite)
 
-
     for test, output in result.failures + result.errors:
         print(f"Output of {test}:\n{output}")
+
 
 
 def calculate_mutation_score(original_file, mutants, test_file):
@@ -125,6 +157,8 @@ def calculate_mutation_score(original_file, mutants, test_file):
 
     mutation_score = num_killed / len(mutants)
     return mutation_score
+
+
 
 
 def run_bugbane():
@@ -159,7 +193,9 @@ def run_bugbane():
         replace_import_statement(original_filename[:-3],test_filename,mutant_filename[:-3])
         # modified_test_filename = modify_test_file(test_filename, original_filename, mutant_filename)
         
-        run_tests(mutant_filename,test_filename,mutants)
+        # run_tests(mutant_filename,test_filename,mutants)
+        print(run_tests(mutant_filename,test_filename))
+
         # if run_tests(mutant_filename,test_filename):
         #     print(f"{mutant_filename}: Test suite passed.")
         # else:
@@ -167,7 +203,7 @@ def run_bugbane():
         replace_import_statement(mutant_filename[:-3],test_filename,original_filename[:-3],reverse = True)
         # replace_import_statement(test_filename,original_filename)
        
-    print(calculate_mutation_score(original_filename,mutants,test_filename))
+    # print(calculate_mutation_score(original_filename,mutants,test_filename))
     # score = calculate_mutation_score(original_filename, test_filename, mutants)
     # print(f"Mutation score: {score}")
 
