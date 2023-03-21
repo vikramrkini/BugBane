@@ -11,8 +11,15 @@ import math
 import importlib.util
 from operators import MutationOperator,ArithmeticOperatorMutationOperator,NegateBooleanMutationOperator,ReplaceStringMutationOperator,RemoveUnaryOperatorMutationOperator,ReplaceIntegerMutationOperator,ReplaceVariableMutationOperator,ReturnValuesMutator,InvertNegativesMutator,LogicalOperatorMutationOperator,ComparisonOperatorMutationOperator,IncrementsMutator,MathMutator,NegateConditionalsMutator, EmptyReturnsMutator
 
-def get_mutant_filename(original_filename, mutant_index):
-    return f"{original_filename[:-3]}mutant{mutant_index}.py"
+# def get_mutant_filename(original_filename, mutant_index):
+#     return f"{original_filename[:-3]}mutant{mutant_index}.py"
+def get_mutant_filename(filename, mutant_num):
+    basename = os.path.basename(filename)
+    dirname = os.path.dirname(filename)
+    mutant_folder = os.path.join(dirname, basename + '_mutants')
+    os.makedirs(mutant_folder, exist_ok=True)
+    mutant_filename = os.path.join(mutant_folder, f"{basename}.{mutant_num}.py")
+    return mutant_filename
 
 def apply_mutations_to_file(filename, mutation_operators):
     with open(filename, 'r') as f:
@@ -44,7 +51,10 @@ def apply_mutations_to_file(filename, mutation_operators):
                     if isinstance(node, ast.AST):
                         # print('Node')
                         node_to_replace.__dict__.update(mutated_node.__dict__)
-                        mutant_code = ast.unparse(mutated_tree)
+                        try :
+                            mutant_code = ast.unparse(mutated_tree)
+                        except KeyError as k :
+                            pass
                         # print(mutant_code)
                         mutant_filename = get_mutant_filename(filename, len(mutants))
                         # print(mutant_filename)
@@ -75,15 +85,15 @@ def replace_import_statement(original_file ,test_file, mutant_file,reverse = Fal
         lines = f.readlines()
     with open(test_file, 'w') as f:
         for line in lines:
-            if 'from ' in line or 'import' in line:
-                if reverse:
-                    if original_file in line :
-                        line = line.replace(mutant_file,original_file)
-                        print(line)
-                else:
-                    if mutant_file in line :
-                        line = line.replace(original_file,mutant_file)
-                        print(line)
+            # if 'from ' in line or 'import' in line:
+            if reverse:
+                if original_file in line :
+                    line = line.replace(mutant_file,original_file)
+                    print(line)
+            else:
+                if mutant_file in line :
+                    line = line.replace(original_file,mutant_file)
+                    print(line)
 
             f.write(line)
 
@@ -213,7 +223,11 @@ def run_bugbane():
         modified_test_filename = f"{test_filename}-mutant"
         if os.path.exists(modified_test_filename):
             os.remove(modified_test_filename)
+         # Remove the folder for mutated files
+        basename = os.path.basename(original_filename)
+        dirname = os.path.dirname(original_filename)
+        mutant_folder = os.path.join(dirname, basename + '_mutants')
+        shutil.rmtree(mutant_folder)
 
 if __name__ == '__main__':
     run_bugbane()
-
