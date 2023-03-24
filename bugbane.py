@@ -7,19 +7,23 @@ import os
 import re
 import shutil
 import unittest
+from unittest.mock import patch
 import math
 import importlib.util
 from operators import MutationOperator,ArithmeticOperatorMutationOperator,NegateBooleanMutationOperator,ReplaceStringMutationOperator,RemoveUnaryOperatorMutationOperator,ReplaceIntegerMutationOperator,ReplaceVariableMutationOperator,ReturnValuesMutator,InvertNegativesMutator,LogicalOperatorMutationOperator,ComparisonOperatorMutationOperator,IncrementsMutator,MathMutator,NegateConditionalsMutator, EmptyReturnsMutator
 
-# def get_mutant_filename(original_filename, mutant_index):
-#     return f"{original_filename[:-3]}mutant{mutant_index}.py"
-def get_mutant_filename(filename, mutant_num):
-    basename = os.path.basename(filename)
-    dirname = os.path.dirname(filename)
-    mutant_folder = os.path.join(dirname, basename + '_mutants')
-    os.makedirs(mutant_folder, exist_ok=True)
-    mutant_filename = os.path.join(mutant_folder, f"{basename}.{mutant_num}.py")
-    return mutant_filename
+def get_mutant_filename(original_filename, mutant_index):
+    return f"{original_filename[:-3]}mutant{mutant_index}.py"
+# def get_mutant_filename(filename, mutant_num):
+#     basename = os.path.basename(filename)
+#     dirname = os.path.dirname(filename)
+#     mutant_folder = os.path.join(dirname, basename[:-3] + '_mutants')
+#     os.makedirs(mutant_folder, exist_ok=True)
+#     mutant_filename = os.path.join(mutant_folder, f"{basename[:-3]}-mutant{mutant_num}.py")
+#     return mutant_filename
+
+def get_mutant_test_filename(original_filename, mutant_index):
+    return f"{original_filename[:-3]}mutant{mutant_index}-test.py"
 
 def apply_mutations_to_file(filename, mutation_operators):
     with open(filename, 'r') as f:
@@ -66,110 +70,74 @@ def apply_mutations_to_file(filename, mutation_operators):
 
     return mutants
 
-def modify_test_file(test_filename, original_filename, mutant_filename):
-    with open(test_filename, "r") as file:
-        test_contents = file.read()
+def run_file_against_tests(source_file_path: str, test_file_path: str,original_file_path :str):
+    # Load the source code module
+   
+    with open(test_file_path, 'r') as f:
+        lines = f.readlines()
+    for line in lines:
+        if 'import' in line:
+            print(line)
 
-    mutant_name = os.path.splitext(os.path.basename(mutant_filename))[0]
-    original_name = os.path.splitext(os.path.basename(original_filename))[0]
-    modified_contents = test_contents.replace(original_name, mutant_name)
+    source_module = importlib.import_module(source_file_path[:-3])
 
-    modified_test_filename = f"{test_filename}.mutant"
-    with open(modified_test_filename, "w") as file:
-        file.write(modified_contents)
+    # Load the test module
+    test_module = unittest.defaultTestLoader.loadTestsFromName(test_file_path[:-3])
+    print(test_module)
+    # Create a TestRunner and run the tests
+    runner = unittest.TextTestRunner()
+    result = runner.run(test_module)
 
-    return modified_test_filename
+    # Print the results
+    print(result)
+
+    # Check if all the tests passed or not
+    if result.wasSuccessful():
+        return True
+    else:
+        return False
+
+def generate_mutant_test_files(original_file,test_file, mutants):
+    test_mutants = []
+    number_of_mutants = len(mutants)
+    for mutant_idx in range(number_of_mutants):
+        mutant_test_filename = get_mutant_test_filename(original_file,mutant_idx)
+        output_file = open(mutant_test_filename, 'w')
+        with open(test_file, 'r') as f:
+            output_file.write(f.read())                            
+        test_mutants.append(mutant_test_filename)
+    for mutant_idx,test_mutant in enumerate(test_mutants):
+        mutant_filename = get_mutant_filename(original_file,mutant_idx)
+        with open(test_mutant, 'r') as f:
+            lines = f.readlines()
+        with open(test_mutant, 'w') as f:
+            for line in lines:
+                if original_file[:-3] in line :
+                    line = line.replace(original_file[:-3],mutant_filename[:-3])
+                f.write(line)       
+    return test_mutants
+
 
 def replace_import_statement(original_file ,test_file, mutant_file,reverse = False):
     with open(test_file, 'r') as f:
         lines = f.readlines()
     with open(test_file, 'w') as f:
         for line in lines:
-            # if 'from ' in line or 'import' in line:
-            if reverse:
-                if original_file in line :
-                    line = line.replace(mutant_file,original_file)
-                    print(line)
-            else:
-                if mutant_file in line :
-                    line = line.replace(original_file,mutant_file)
-                    print(line)
-
+           
+            if 'from' in line or 'import' in line:
+                
+                if not reverse:
+                    if original_file in line :
+                        line = line.replace(original_file,mutant_file)
+                        
+                else:
+                    if mutant_file in line :
+                        print('True')
+                        # print(original_file,mutant_file)
+                        line = line.replace(mutant_file,'$')
+                        line = line.replace('$',original_file)
+                    
             f.write(line)
-
-# def run_tests(mutant_file, test_file):
-#     # Load the test cases from the test file
-#     spec = importlib.util.spec_from_file_location("test_module", test_file)
-#     test_module = importlib.util.module_from_spec(spec)
-#     spec.loader.exec_module(test_module)
-
-#     # Load the mutant code as a module
-#     spec = importlib.util.spec_from_file_location("mutant_module", mutant_file)
-#     mutant_module = importlib.util.module_from_spec(spec)
-#     spec.loader.exec_module(mutant_module)
-
-#     # Run the tests and calculate the mutation score
-#     loader = unittest.TestLoader()
-#     suite = loader.loadTestsFromModule(test_module)
-#     runner = unittest.TextTestRunner()
-#     result = runner.run(suite)
-
-#     print(result)
-#     for test, output in result.failures + result.errors:
-#         print(f"Output of {test}:\n{output}")
-import importlib.util
-import unittest
-from unittest.mock import patch
-
-def run_tests(mutant_file, test_file):
-    # Load the test cases from the test file
-    spec = importlib.util.spec_from_file_location("test_module", test_file)
-    test_module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(test_module)
-
-    # Load the mutant code as a module
-    spec = importlib.util.spec_from_file_location("mutant_module", mutant_file)
-    mutant_module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mutant_module)
-
-    # Run the tests and calculate the mutation score
-    loader = unittest.TestLoader()
-    suite = loader.loadTestsFromModule(test_module)
-
-    # Replace original code with mutant code using patch
-    for func_name, func_obj in inspect.getmembers(mutant_module, inspect.isfunction):
-        # print(func_name)
-        with patch.object(test_module, func_name, side_effect=func_obj):
-            pass
-
-    runner = unittest.TextTestRunner()
-    result = runner.run(suite)
-
-    for test, output in result.failures + result.errors:
-        print(f"Output of {test}:\n{output}")
-
-
-
-def calculate_mutation_score(original_file, mutants, test_file):
-    num_killed = 0
-    for mutant in mutants:
-        try:
-            replace_import_statement(original_file[:-3],test_file,mutant[:-3])
-            result = subprocess.run(["python", test_file], capture_output=True, check=True, text=True, input=f"{mutant}\n")
-            if "FAILED" in result.stdout or "ERROR" in result.stdout:
-                print(f"Mutant {mutant} killed by test file {test_file}")
-                num_killed += 1
-            else:
-                print(f"Mutant {mutant} survived test file {test_file}")
-            replace_import_statement(mutant[:-3],test_file,original_file[:-3],reverse = True)
-        except subprocess.CalledProcessError:
-            print(f"Error running test file {test_file} on mutant {mutant}")
-
-    mutation_score = num_killed / len(mutants)
-    return mutation_score
-
-
-
 
 def run_bugbane():
     if len(sys.argv) < 3:
@@ -180,7 +148,7 @@ def run_bugbane():
     test_filename = sys.argv[2]
 
     mutation_operators = [
-        # ArithmeticOperatorMutationOperator([ast.Add, ast.Sub, ast.Mult, ast.Div]),
+        ArithmeticOperatorMutationOperator([ast.Add, ast.Sub, ast.Mult, ast.Div]),
         LogicalOperatorMutationOperator([ast.And, ast.Or, ast.Not]),
         ComparisonOperatorMutationOperator([ast.Eq, ast.NotEq, ast.Lt, ast.LtE, ast.Gt, ast.GtE, ast.Is, ast.IsNot, ast.In, ast.NotIn]),
         NegateBooleanMutationOperator(),
@@ -197,25 +165,18 @@ def run_bugbane():
     ]
 
     mutants = apply_mutations_to_file(original_filename, mutation_operators)
-
-    for mutant_filename in mutants:
-        print(mutant_filename,original_filename)
-        replace_import_statement(original_filename[:-3],test_filename,mutant_filename[:-3])
-        # modified_test_filename = modify_test_file(test_filename, original_filename, mutant_filename)
-        
-        # run_tests(mutant_filename,test_filename,mutants)
-        print(run_tests(mutant_filename,test_filename))
-
-        # if run_tests(mutant_filename,test_filename):
-        #     print(f"{mutant_filename}: Test suite passed.")
-        # else:
-        #     print(f"{mutant_filename}: Test suite failed.")
-        replace_import_statement(mutant_filename[:-3],test_filename,original_filename[:-3],reverse = True)
-        # replace_import_statement(test_filename,original_filename)
-       
-    # print(calculate_mutation_score(original_filename,mutants,test_filename))
-    # score = calculate_mutation_score(original_filename, test_filename, mutants)
-    # print(f"Mutation score: {score}")
+    test_mutants = generate_mutant_test_files(original_filename,test_filename,mutants)
+    number_of_mutants = len(mutants)
+    number_of_test_failed = 0
+    number_of_test_passed = 0
+    for index in range(number_of_mutants):  
+        if run_file_against_tests(mutants[index],test_mutants[index],original_filename):
+            number_of_test_passed += 1
+        else:
+            number_of_test_failed += 1
+    print("Number of Mutants Passed: ",number_of_test_passed)
+    print("Number of Mutants Failed: ",number_of_test_failed)
+    print("Mutation Score: ", (number_of_test_failed/number_of_mutants)*100)
 
     # Remove mutated files and modified test files
     for mutant_filename in mutants:
@@ -223,11 +184,18 @@ def run_bugbane():
         modified_test_filename = f"{test_filename}-mutant"
         if os.path.exists(modified_test_filename):
             os.remove(modified_test_filename)
-         # Remove the folder for mutated files
-        basename = os.path.basename(original_filename)
-        dirname = os.path.dirname(original_filename)
-        mutant_folder = os.path.join(dirname, basename + '_mutants')
-        shutil.rmtree(mutant_folder)
+    for mutant_test_filename in test_mutants:
+        os.remove(mutant_test_filename)
+        modified_test_filename = f"{test_filename}-mutant-test"
+        if os.path.exists(modified_test_filename):
+            os.remove(modified_test_filename)
+        #  Remove the folder for mutated files
+        # basename = os.path.basename(original_filename)
+        # dirname = os.path.dirname(original_filename)
+        # mutant_folder = os.path.join(dirname, basename + '_mutants')
+        # shutil.rmtree(mutant_folder)
 
 if __name__ == '__main__':
     run_bugbane()
+
+    
