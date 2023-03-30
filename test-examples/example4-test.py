@@ -1,3 +1,5 @@
+import sys
+
 import unittest
 from example4 import add_numbers, subtract_numbers,multiply_numbers,divide_numbers,is_even,is_odd, compare_numbers, remove_unary_operator,replace_string,replace_variable,replace_integer,negate_boolean,invert_negatives
 

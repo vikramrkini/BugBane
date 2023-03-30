@@ -11,17 +11,12 @@ import unittest
 from unittest.mock import patch
 import math
 import importlib.util
+import tempfile
 from operators import MutationOperator,ArithmeticOperatorMutationOperator,NegateBooleanMutationOperator,ReplaceStringMutationOperator,RemoveUnaryOperatorMutationOperator,ReplaceIntegerMutationOperator,ReplaceVariableMutationOperator,ReturnValuesMutator,InvertNegativesMutator,LogicalOperatorMutationOperator,ComparisonOperatorMutationOperator,IncrementsMutator,MathMutator,NegateConditionalsMutator, EmptyReturnsMutator
 
 def get_mutant_filename(original_filename, mutant_index):
     return f"{original_filename[:-3]}mutant{mutant_index}.py"
-# def get_mutant_filename(filename, mutant_num):
-#     basename = os.path.basename(filename)
-#     dirname = os.path.dirname(filename)
-#     mutant_folder = os.path.join(dirname, basename[:-3] + '_mutants')
-#     os.makedirs(mutant_folder, exist_ok=True)
-#     mutant_filename = os.path.join(mutant_folder, f"{basename[:-3]}-mutant{mutant_num}.py")
-#     return mutant_filename
+
 
 def get_mutant_test_filename(original_filename, mutant_index):
     return f"{original_filename[:-3]}mutant{mutant_index}-test.py"
@@ -71,53 +66,262 @@ def apply_mutations_to_file(filename, mutation_operators):
 
     return mutants
 
-def run_file_against_tests(source_file_path: str, test_file_path: str,original_file_path :str):
-    # Load the source code module
+def create_file_copy(input_file_path):
+    # Read the contents of the input file
+    with open(input_file_path, 'r') as f:
+        file_contents = f.read()
+
+    # Create a new file with the same contents as the input file
+    output_file_path = os.path.splitext(input_file_path)[0] + '-copy.py'
+    with open(output_file_path, 'w') as f:
+        f.write(file_contents)
+
+    return output_file_path
+
+
+def load_file(original_file,mutant_file):
+    with open(mutant_file, 'r') as target_file:
+        target_content = target_file.read()
+    with open(original_file, 'w') as source_file:
+        source_file.write(target_content)
+    target_file.close()
+    source_file.close()
+
+
+
+# def run_file_against_tests(source_file_path: str, test_file_path: str):
+#     # Load the source code module
    
-    with open(test_file_path, 'r') as f:
-        lines = f.readlines()
-    for line in lines:
-        if 'import' in line:
-            print(line)
+#     # with open(test_file_path, 'r') as f:
+#     #     lines = f.readlines()
+#     # for line in lines:
+#     #     if 'import' in line:
+#     #         print(line)
 
-    source_module = importlib.import_module(source_file_path[:-3])
+#     source_module = importlib.import_module(source_file_path[:-3])
 
-    # Load the test module
-    test_module = unittest.defaultTestLoader.loadTestsFromName(test_file_path[:-3])
-    print(test_module)
-    # Create a TestRunner and run the tests
-    runner = unittest.TextTestRunner()
-    result = runner.run(test_module)
+#     # Load the test module
+#     test_module = unittest.defaultTestLoader.loadTestsFromName(test_file_path[:-3])
+#     print(test_module)
+#     # Create a TestRunner and run the tests
+#     runner = unittest.TextTestRunner()
+#     result = runner.run(test_module)
 
-    # Print the results
-    print(result)
+#     # Print the results
+#     print(result)
 
-    # Check if all the tests passed or not
-    if result.wasSuccessful():
+#     # Check if all the tests passed or not
+#     if result.wasSuccessful():
+#         return True
+#     else:
+#         return False
+
+
+# def run_file_against_tests(source_file_path: str, test_file_path: str) -> bool:
+#     # Load source code module
+#     with open(source_file_path, 'r') as f:
+#         source_code = f.read()
+
+#     try:
+#         source_module = compile(source_code, source_file_path, 'exec')
+#         exec(source_module)
+#     except Exception as e:
+#         print(f"Error loading source code: {e}")
+#         return False
+
+#     # Load test module
+#     with open(test_file_path, 'r') as f:
+#         test_code = f.read()
+
+#     try:
+#         test_module = compile(test_code, test_file_path, 'exec')
+#         exec(test_module)
+#     except Exception as e:
+#         print(f"Error loading test code: {e}")
+#         return False
+
+#     # Run tests
+#     test_suite = unittest.defaultTestLoader.loadTestsFromModule(test_module)
+#     runner = unittest.TextTestRunner()
+#     result = runner.run(test_suite)
+
+#     # Check if all the tests passed or not
+#     if result.wasSuccessful():
+#         return True
+#     else:
+#         return False
+
+
+# def run_file_against_tests(source_file_path: str, test_file_path: str):
+#     # Add the source and test directories to the Python path
+#     source_dir = os.path.dirname(os.path.abspath(source_file_path))
+#     test_dir = os.path.dirname(os.path.abspath(test_file_path))
+#     sys.path.insert(0, source_dir)
+#     sys.path.insert(0, test_dir)
+
+#     # Load the source file
+#     try:
+#         with open(source_file_path, 'r') as f:
+#             source_code = f.read()
+#         source_module = compile(source_code, source_file_path, 'exec')
+#         exec(source_module)
+#     except Exception as e:
+#         print(f"Error loading source code: {e}")
+#         return False
+#     finally:
+#         # Remove the source and test directories from the Python path
+#         sys.path.remove(source_dir)
+#         sys.path.remove(test_dir)
+
+#     # Load the test file
+#     try:
+#         with open(test_file_path, 'r') as f:
+#             test_code = f.read()
+#         test_module = compile(test_code, test_file_path, 'exec')
+#         exec(test_module)
+#     except Exception as e:
+#         print(f"Error loading test code: {e}")
+#         return False
+
+#     # Create a TestRunner and run the tests
+#     test_suite = unittest.defaultTestLoader.loadTestsFromModule(test_module)
+#     runner = unittest.TextTestRunner()
+#     result = runner.run(test_suite)
+
+#     # Print the results
+#     print(result)
+
+#     # Check if all the tests passed or not
+#     if result.wasSuccessful():
+#         return True
+#     else:
+#         return False
+
+def run_file_against_tests(source_file_path: str, test_file_path: str):
+    # Get the directory containing the source and test files
+    source_dir = os.path.dirname(source_file_path)
+    test_dir = os.path.dirname(test_file_path)
+
+    # Execute the test file in a subprocess with the correct environment
+    try:
+        result = subprocess.run(["python", "-m", "unittest", test_file_path], cwd=test_dir, env=os.environ.copy())
+        print(result)
+    except Exception as e:
+        print(f"Error running tests: {e}")
+        return False
+
+    # If no exception is raised, assume all tests passed
+    if result.returncode == 0:
         return True
     else:
         return False
 
-def generate_mutant_test_files(original_file,test_file, mutants):
-    test_mutants = []
-    number_of_mutants = len(mutants)
-    for mutant_idx in range(number_of_mutants):
-        mutant_test_filename = get_mutant_test_filename(original_file,mutant_idx)
-        output_file = open(mutant_test_filename, 'w')
-        with open(test_file, 'r') as f:
-            output_file.write(f.read())                            
-        test_mutants.append(mutant_test_filename)
-    for mutant_idx,test_mutant in enumerate(test_mutants):
-        mutant_filename = get_mutant_filename(original_file,mutant_idx)
-        with open(test_mutant, 'r') as f:
-            lines = f.readlines()
-        with open(test_mutant, 'w') as f:
-            for line in lines:
-                if original_file[:-3] in line :
-                    line = line.replace(original_file[:-3],mutant_filename[:-3])
-                f.write(line)       
-    return test_mutants
 
+# def run_file_against_tests(source_file_path: str, test_file_path: str):
+#     # Get the directory containing the source file
+#     source_dir = os.path.dirname(source_file_path)
+
+#     # Add the source directory to sys.path
+#     sys.path.append(source_dir)
+
+#     # Load the source module
+#     source_module = None
+#     try:
+#         with open(source_file_path, 'r') as f:
+#             source_code = f.read()
+#         source_module = compile(source_code, source_file_path, 'exec')
+#         exec(source_module)
+#     except Exception as e:
+#         print(f"Error loading source code: {e}")
+#         return False
+
+#     # Get the directory containing the test file
+#     test_dir = os.path.dirname(test_file_path)
+
+#     # Add the test directory to sys.path
+#     sys.path.append(test_dir)
+
+#     # Load the test module
+#     test_module = None
+#     try:
+#         with open(test_file_path, 'r') as f:
+#             test_code = f.read()
+#         test_module = compile(test_code, test_file_path, 'exec')
+#         exec(test_module)
+#     except Exception as e:
+#         print(f"Error loading test code: {e}")
+#         return False
+
+#     # Create a TestRunner and run the tests
+#     test_suite = unittest.defaultTestLoader.loadTestsFromModule(test_module)
+#     runner = unittest.TextTestRunner()
+#     result = runner.run(test_suite)
+
+#     # Check if all the tests passed or not
+#     if result.wasSuccessful():
+#         return True
+#     else:
+#         return False
+
+
+# def generate_mutant_test_files(original_file,test_file, mutants):
+#     test_mutants = []
+#     number_of_mutants = len(mutants)
+#     for mutant_idx in range(number_of_mutants):
+#         mutant_test_filename = get_mutant_test_filename(original_file,mutant_idx)
+#         output_file = open(mutant_test_filename, 'w')
+#         with open(test_file, 'r') as f:
+#             output_file.write(f.read())                            
+#         test_mutants.append(mutant_test_filename)
+#     for mutant_idx,test_mutant in enumerate(test_mutants):
+#         mutant_filename = get_mutant_filename(original_file,mutant_idx)
+#         with open(test_mutant, 'r') as f:
+#             lines = f.readlines()
+#         with open(test_mutant, 'w') as f:
+#             for line in lines:
+#                 if original_file[:-3] in line :
+#                     line = line.replace(original_file[:-3],mutant_filename[:-3])
+#                 f.write(line)       
+#     return test_mutants
+
+# def run_file_against_tests(original_file_path: str, mutant_file_paths: list[str], test_file_path: str):
+#     # Load the original source code module
+#     with open(original_file_path, 'r') as f:
+#         original_code = f.read()
+#     # Create a temporary file to store the modified code
+#     with open(f"{original_file_path[:-3]}-copy.py",'w') as temp_file:
+#         temp_file.write(original_code)
+
+#     # Load the test module
+    
+
+#     for mutant_file_path in mutant_file_paths:
+#         # Replace the content of the original file with the content of the mutant file
+#         with open(mutant_file_path, 'r') as f:
+#             mutant_code = f.read()
+#         with open(original_file_path, 'w') as f:
+#             f.write(mutant_code)
+
+#         # Load the modified source code module
+#         source_module = importlib.import_module(os.path.splitext(os.path.basename(original_file_path[:-3]))[0])
+#         test_module = unittest.defaultTestLoader.loadTestsFromName(test_file_path[:-3])
+#         # Create a TestRunner and run the tests
+#         runner = unittest.TextTestRunner()
+#         result = runner.run(test_module)
+
+#         # Print the results
+#         print(f"Mutant file: {mutant_file_path}")
+#         print(result)
+
+#         # Check if all the tests passed or not
+#         if result.wasSuccessful():
+#             print("All tests passed")
+#         else:
+#             print("Some tests failed")
+
+#         # Restore the original content of the file
+#         with open(original_file_path, 'w') as f:
+#             f.write(original_code)
 
 def replace_import_statement(original_file ,test_file, mutant_file,reverse = False):
     with open(test_file, 'r') as f:
@@ -169,7 +373,7 @@ def run_bugbane(parser):
         ReplaceIntegerMutationOperator(42),
         ReplaceStringMutationOperator("world"),
         ReplaceVariableMutationOperator("x","y"),
-        ReturnValuesMutator(),
+        # ReturnValuesMutator(),
         InvertNegativesMutator(),
         IncrementsMutator() ,
         MathMutator() ,
@@ -180,33 +384,45 @@ def run_bugbane(parser):
 
     if config.list_operators:
         list_mutation_operators(mutation_operators)
-    
-    # if len(sys.argv) < 3:
-    #     print("Usage: python mutant_tester.py <original_file> <test_file>")
-    #     return
-
-    # original_filename = sys.argv[1]
-    # test_filename = sys.argv[2]
-
-    
+        
     if config.source_file and config.test_file:
-        original_filename = config.source_file[0]
-        test_filename = config.test_file[0]
+        # Extract the folder containing the source file path
+        source_folder_path = os.path.abspath(config.source_file[0])
+        source_folder_path = os.path.dirname(source_folder_path)
+        original_filename = os.path.basename(config.source_file[0])
+        test_folder_path = os.path.abspath(config.test_file[0])
+        test_folder_path = os.path.dirname(test_folder_path)
+        test_filename = os.path.basename(config.test_file[0])
+        # Change the working directory to the folder containing the source file
+        print(source_folder_path)
+        os.chdir(source_folder_path)
+        # Open the source code file
+        
+        # original_filename = config.source_file[0]
+        # test_filename = config.test_file[0]
         print(original_filename,test_filename)
-        mutants = apply_mutations_to_file(original_filename, mutation_operators)
-        test_mutants = generate_mutant_test_files(original_filename,test_filename,mutants)
+        mutants = apply_mutations_to_file(source_folder_path+'/'+original_filename, mutation_operators)
+        # test_mutants = generate_mutant_test_files(original_filename,test_filename,mutants)
         number_of_mutants = len(mutants)
         number_of_test_failed = 0
         number_of_test_passed = 0
-        for index in range(number_of_mutants):  
-            if run_file_against_tests(mutants[index],test_mutants[index],original_filename):
+        print(source_folder_path+'/'+original_filename,test_folder_path+'/'+test_filename)
+        copied_file = create_file_copy(source_folder_path+'/'+original_filename)  
+        for index in range(number_of_mutants):
+            load_file(source_folder_path+'/'+original_filename,mutants[index])
+            if run_file_against_tests(source_folder_path+'/'+original_filename,test_folder_path+'/'+test_filename):
                 number_of_test_passed += 1
             else:
                 number_of_test_failed += 1
+            # break
+        original_filename = load_file(original_filename,copied_file)
+        
         print("Number of Mutants Passed: ",number_of_test_passed)
         print("Number of Mutants Failed: ",number_of_test_failed)
         print("Mutation Score: ", (number_of_test_failed/number_of_mutants)*100)
-
+        # run_file_against_tests(original_filename,mutants,test_filename)
+        
+        
         if not config.show_mutants:
         # Remove mutated files and modified test files
             for mutant_filename in mutants:
@@ -214,11 +430,11 @@ def run_bugbane(parser):
                 modified_test_filename = f"{test_filename}-mutant"
                 if os.path.exists(modified_test_filename):
                     os.remove(modified_test_filename)
-        for mutant_test_filename in test_mutants:
-            os.remove(mutant_test_filename)
-            modified_test_filename = f"{test_filename}-mutant-test"
-            if os.path.exists(modified_test_filename):
-                os.remove(modified_test_filename)
+        # for mutant_test_filename in test_mutants:
+        #     os.remove(mutant_test_filename)
+        #     modified_test_filename = f"{test_filename}-mutant-test"
+        #     if os.path.exists(modified_test_filename):
+        #         os.remove(modified_test_filename)
         #  Remove the folder for mutated files
         # basename = os.path.basename(original_filename)
         # dirname = os.path.dirname(original_filename)

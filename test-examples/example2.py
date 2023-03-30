@@ -18,7 +18,7 @@ def replace_integer(value):
     return value + 1
 
 def replace_string(value):
-    return "new string"
+    return 'new string'
 
 def replace_variable(a, b):
     return a + b
