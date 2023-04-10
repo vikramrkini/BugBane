@@ -1,42 +1,42 @@
 def add_numbers(a, b):
-    return a + b
+    return
 
 def subtract_numbers(a, b):
-    return a - b
+    return
 
 def multiply_numbers(a, b):
-    return a * b
+    return
 
 def divide_numbers(a, b):
-    return a / b
+    return
 
 def is_even(n):
-    return n % 2 == 0
+    return
 
 def is_odd(n):
-    return n % 2 != 0
+    return
 
 def compare_numbers(a, b):
     if a == b:
-        return True
+        return
     else:
-        return False
+        return
 
 def negate_boolean(boolean_value):
-    return not boolean_value
+    return
 
 def remove_unary_operator(value):
-    return -value
+    return
 
 def replace_integer(value):
-    return value + 42
+    return
 
 def replace_string(value):
-    return value.replace('hello', 'world')
+    return
 
 def replace_variable(x):
     y = x + 1
-    return y
+    return
 
 def invert_negatives(value):
-    return -value
+    return

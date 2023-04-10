@@ -17,11 +17,6 @@ def remove_unary_operator(value):
 def replace_integer(value):
     return value + 1
 
-def replace_string(value):
-    return 'new string'
-
-def replace_variable(a, b):
-    return a + b
 
 def complex_function(a, b):
     if a < 0:

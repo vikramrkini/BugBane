@@ -3,17 +3,19 @@ import argparse
 import copy
 import inspect
 import sys
+sys.path.append('/Users/vikramkini/CS527/project/bugbane/ansible-devel/lib/ansible')
 import subprocess
 import os
 import re
 import shutil
 import unittest
 from unittest.mock import patch
+import time
 import math
 import importlib.util
 import tempfile
-from operators import MutationOperator,ArithmeticOperatorMutationOperator,NegateBooleanMutationOperator,ReplaceStringMutationOperator,RemoveUnaryOperatorMutationOperator,ReplaceIntegerMutationOperator,ReplaceVariableMutationOperator,ReturnValuesMutator,InvertNegativesMutator,LogicalOperatorMutationOperator,ComparisonOperatorMutationOperator,IncrementsMutator,MathMutator,NegateConditionalsMutator, EmptyReturnsMutator
-
+# from operators import MutationOperator,ArithmeticOperatorMutationOperator,NegateBooleanMutationOperator,ReplaceStringMutationOperator,RemoveUnaryOperatorMutationOperator,ReplaceIntegerMutationOperator,ReplaceVariableMutationOperator,ReturnValuesMutator,InvertNegativesMutator,LogicalOperatorMutationOperator,ComparisonOperatorMutationOperator,IncrementsMutator,MathMutator,NegateConditionalsMutator, EmptyReturnsMutator
+from operators import MutationOperator, ConditionalsBoundaryMutator, IncrementsMutator, InvertNegativesMutator, MathMutator, NegateConditionalsMutator, VoidMethodCallMutator, FalseReturnsMutator, TrueReturnsMutator, NullReturnsMutator,RemoveConditionalsMutator
 def get_mutant_filename(original_filename, mutant_index):
     return f"{original_filename[:-3]}mutant{mutant_index}.py"
 
@@ -84,112 +86,39 @@ def load_file(original_file,mutant_file):
         target_content = target_file.read()
     with open(original_file, 'w') as source_file:
         source_file.write(target_content)
+        source_file.flush()
     target_file.close()
     source_file.close()
+    return original_file
  
 def run_file_against_tests(source_file_path: str, test_file_path: str, unittest : bool):
     # Get the directory containing the source and test files
     source_dir = os.path.dirname(source_file_path)
     test_dir = os.path.dirname(test_file_path)
+    test_file = os.path.basename(test_file_path)
 
     # Execute the test file in a subprocess with the correct environment
     try:
         if unittest:
-            result = subprocess.run(["python", "-m", "unittest", test_file_path], cwd=test_dir, env=os.environ.copy())
+            result = subprocess.run(["python", "-m", "unittest", test_file], cwd=test_dir, env=os.environ.copy())
         else:
-            result = subprocess.run(["pytest", test_file_path], cwd=test_dir, env=os.environ.copy())
+            result = subprocess.run(["pytest" ,test_file], cwd=test_dir, env=os.environ.copy())
         print(result)
     except Exception as e:
         print(f"Error running tests: {e}")
-        return False
+        # return False
 
     # If no exception is raised, assume all tests passed
-    if result.returncode == 0:
-        return True
-    else:
+    # if result.returncode == 0:
+    #     return True
+    # else:
+    #     return False
+    if result.returncode != 0:
+        print(result.returncode)
         return False
+    else:
+        return True
 
-
-
-# def generate_mutant_test_files(original_file,test_file, mutants):
-#     test_mutants = []
-#     number_of_mutants = len(mutants)
-#     for mutant_idx in range(number_of_mutants):
-#         mutant_test_filename = get_mutant_test_filename(original_file,mutant_idx)
-#         output_file = open(mutant_test_filename, 'w')
-#         with open(test_file, 'r') as f:
-#             output_file.write(f.read())                            
-#         test_mutants.append(mutant_test_filename)
-#     for mutant_idx,test_mutant in enumerate(test_mutants):
-#         mutant_filename = get_mutant_filename(original_file,mutant_idx)
-#         with open(test_mutant, 'r') as f:
-#             lines = f.readlines()
-#         with open(test_mutant, 'w') as f:
-#             for line in lines:
-#                 if original_file[:-3] in line :
-#                     line = line.replace(original_file[:-3],mutant_filename[:-3])
-#                 f.write(line)       
-#     return test_mutants
-
-# def run_file_against_tests(original_file_path: str, mutant_file_paths: list[str], test_file_path: str):
-#     # Load the original source code module
-#     with open(original_file_path, 'r') as f:
-#         original_code = f.read()
-#     # Create a temporary file to store the modified code
-#     with open(f"{original_file_path[:-3]}-copy.py",'w') as temp_file:
-#         temp_file.write(original_code)
-
-#     # Load the test module
-    
-
-#     for mutant_file_path in mutant_file_paths:
-#         # Replace the content of the original file with the content of the mutant file
-#         with open(mutant_file_path, 'r') as f:
-#             mutant_code = f.read()
-#         with open(original_file_path, 'w') as f:
-#             f.write(mutant_code)
-
-#         # Load the modified source code module
-#         source_module = importlib.import_module(os.path.splitext(os.path.basename(original_file_path[:-3]))[0])
-#         test_module = unittest.defaultTestLoader.loadTestsFromName(test_file_path[:-3])
-#         # Create a TestRunner and run the tests
-#         runner = unittest.TextTestRunner()
-#         result = runner.run(test_module)
-
-#         # Print the results
-#         print(f"Mutant file: {mutant_file_path}")
-#         print(result)
-
-#         # Check if all the tests passed or not
-#         if result.wasSuccessful():
-#             print("All tests passed")
-#         else:
-#             print("Some tests failed")
-
-#         # Restore the original content of the file
-#         with open(original_file_path, 'w') as f:
-#             f.write(original_code)
-
-def replace_import_statement(original_file ,test_file, mutant_file,reverse = False):
-    with open(test_file, 'r') as f:
-        lines = f.readlines()
-    with open(test_file, 'w') as f:
-        for line in lines:
-           
-            if 'from' in line or 'import' in line:
-                
-                if not reverse:
-                    if original_file in line :
-                        line = line.replace(original_file,mutant_file)
-                        
-                else:
-                    if mutant_file in line :
-                        print('True')
-                        # print(original_file,mutant_file)
-                        line = line.replace(mutant_file,'$')
-                        line = line.replace('$',original_file)
-                    
-            f.write(line)
 
 def build_parser():
     parser = argparse.ArgumentParser(description='Bugbane - A comprehensive Mutation Testing Tool for Python Source Code',
@@ -207,34 +136,39 @@ def build_parser():
     return parser
 
 def list_mutation_operators(mutation_operators):
+    print('---------------------------------------------------------------------------------')
     for mutation_operator in mutation_operators:
-        print(type(mutation_operator).__name__)
+        print(type(mutation_operator).__name__ + ':')
+        print('---------------------------------------------------------------------------------')
+        print(" ")
+        print(mutation_operator.__doc__)
+        print('---------------------------------------------------------------------------------')
+
     
 
 
 def run_bugbane(parser):
-    mutation_operators = [
-        ArithmeticOperatorMutationOperator([ast.Add, ast.Sub, ast.Mult, ast.Div]),
-        LogicalOperatorMutationOperator([ast.And, ast.Or, ast.Not]),
-        ComparisonOperatorMutationOperator([ast.Eq, ast.NotEq, ast.Lt, ast.LtE, ast.Gt, ast.GtE, ast.Is, ast.IsNot, ast.In, ast.NotIn]),
-        NegateBooleanMutationOperator(),
-        RemoveUnaryOperatorMutationOperator(),
-        ReplaceIntegerMutationOperator(42),
-        ReplaceStringMutationOperator("world"),
-        ReplaceVariableMutationOperator("x","y"),
-        # ReturnValuesMutator(),
+    
+    mutation_operators = [  
+        MathMutator(),
+        ConditionalsBoundaryMutator(),
+        IncrementsMutator(),
         InvertNegativesMutator(),
-        IncrementsMutator() ,
-        MathMutator() ,
         NegateConditionalsMutator(),
-        EmptyReturnsMutator()
-    ]
+        VoidMethodCallMutator(),
+        FalseReturnsMutator(),
+        TrueReturnsMutator(),
+        NullReturnsMutator(),
+        RemoveConditionalsMutator()
+        ]
+
     config = parser.parse_args()
 
     if config.list_operators:
         list_mutation_operators(mutation_operators)
         
     if config.source_file and config.test_file:
+        start_time = time.time()
         # Extract the folder containing the source file path
         source_folder_path = os.path.abspath(config.source_file[0])
         source_folder_path = os.path.dirname(source_folder_path)
@@ -268,12 +202,14 @@ def run_bugbane(parser):
                 # break
         else :
             for index in range(number_of_mutants):
+                
                 load_file(source_folder_path+'/'+original_filename,mutants[index])
                 if run_file_against_tests(source_folder_path+'/'+original_filename,test_folder_path+'/'+test_filename,False):
                     number_of_test_passed += 1
                 else:
                     number_of_test_failed += 1
-                # break
+                
+                
         
         original_filename = load_file(original_filename,copied_file)
         
@@ -281,7 +217,10 @@ def run_bugbane(parser):
         print("Number of Mutants Failed: ",number_of_test_failed)
         print("Mutation Score: ", (number_of_test_failed/number_of_mutants)*100)
         # run_file_against_tests(original_filename,mutants,test_filename)
-        
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        # Print the elapsed time in minutes and seconds
+        print("Elapsed time: %d minutes %d seconds" % (elapsed_time // 60, elapsed_time % 60))
         
         if not config.show_mutants:
         # Remove mutated files and modified test files
@@ -290,6 +229,7 @@ def run_bugbane(parser):
                 modified_test_filename = f"{test_filename}-mutant"
                 if os.path.exists(modified_test_filename):
                     os.remove(modified_test_filename)
+        os.remove(original_filename[:-3] + '-copy.py')
         # for mutant_test_filename in test_mutants:
         #     os.remove(mutant_test_filename)
         #     modified_test_filename = f"{test_filename}-mutant-test"

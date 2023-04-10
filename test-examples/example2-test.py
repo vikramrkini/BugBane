@@ -1,6 +1,6 @@
 
 import unittest
-from example2 import multiply , divide ,negate_boolean, remove_unary_operator , replace_integer ,replace_variable , replace_string , complex_function
+from example2 import multiply , divide ,negate_boolean, remove_unary_operator , replace_integer, complex_function
 class TestMutants(unittest.TestCase):
     def test_multiply(self):
         self.assertEqual(multiply(2, 3), 6)
@@ -24,15 +24,6 @@ class TestMutants(unittest.TestCase):
         self.assertEqual(replace_integer(5), 6)
         self.assertEqual(replace_integer(0), 1)
         self.assertEqual(replace_integer(-5), -4)
-        
-    def test_replace_string(self):
-        self.assertEqual(replace_string("old string"), "new string")
-        self.assertEqual(replace_string(""), "new string")
-        
-    def test_replace_variable(self):
-        self.assertEqual(replace_variable(2, 3), 5)
-        self.assertEqual(replace_variable(-4, 7), 3)
-        self.assertEqual(replace_variable(0, 10), 10)
         
     def test_complex_function(self):
         self.assertEqual(complex_function(50, 10), 120)
