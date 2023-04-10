@@ -1,21 +1,17 @@
 import ast
 import argparse
 import copy
-import inspect
 import sys
 sys.path.append('/Users/vikramkini/CS527/project/bugbane/ansible-devel/lib/ansible')
 import subprocess
 import os
 import re
-import shutil
-import unittest
-from unittest.mock import patch
 import time
-import math
-import importlib.util
-import tempfile
+import astor
+import random
+
 # from operators import MutationOperator,ArithmeticOperatorMutationOperator,NegateBooleanMutationOperator,ReplaceStringMutationOperator,RemoveUnaryOperatorMutationOperator,ReplaceIntegerMutationOperator,ReplaceVariableMutationOperator,ReturnValuesMutator,InvertNegativesMutator,LogicalOperatorMutationOperator,ComparisonOperatorMutationOperator,IncrementsMutator,MathMutator,NegateConditionalsMutator, EmptyReturnsMutator
-from operators import MutationOperator, ConditionalsBoundaryMutator, IncrementsMutator, InvertNegativesMutator, MathMutator, NegateConditionalsMutator, VoidMethodCallMutator, FalseReturnsMutator, TrueReturnsMutator, NullReturnsMutator,RemoveConditionalsMutator
+from operators import Return, MutationOperator, ConditionalsBoundaryMutator, IncrementsMutator, InvertNegativesMutator, MathMutator, NegateConditionalsMutator, VoidMethodCallMutator, FalseReturnsMutator, TrueReturnsMutator, NullReturnsMutator,RemoveConditionalsMutator
 def get_mutant_filename(original_filename, mutant_index):
     return f"{original_filename[:-3]}mutant{mutant_index}.py"
 
@@ -23,48 +19,81 @@ def get_mutant_filename(original_filename, mutant_index):
 def get_mutant_test_filename(original_filename, mutant_index):
     return f"{original_filename[:-3]}mutant{mutant_index}-test.py"
 
-def apply_mutations_to_file(filename, mutation_operators):
+# def apply_mutations_to_file(filename, mutation_operators):
+#     with open(filename, 'r') as f:
+#         code = f.read()
+  
+#     original_tree = ast.parse(code)
+#     mutants = []
+#     # print(original_tree)
+#     for mutation_operator in mutation_operators:
+#         # print(mutation_operator.target_type)
+#         if not isinstance(mutation_operator, MutationOperator):
+#             raise TypeError("All mutation operators must be of type MutationOperator.")
+
+#         if mutation_operator.target_type is None:
+#             raise ValueError("All mutation operators must define a target_type attribute.")
+
+#         for node_to_replace in ast.walk(original_tree):
+#             # print(node_to_replace)
+#             if not isinstance(node_to_replace, mutation_operator.target_type):
+#                 # print(node_to_replace._fields)
+#                 continue
+#             # print(node_to_replace)
+#             for mutated_node in mutation_operator.mutate_node(node_to_replace):
+#                 mutated_tree = copy.deepcopy(original_tree)
+#                 # print(mutated_node)
+#                 for node in ast.walk(mutated_tree):
+#                     # print(node)
+#                     # if node is mutated_node and isinstance(node, ast.AST):
+#                     if isinstance(node, ast.AST):
+#                         # print('Node')
+#                         node_to_replace.__dict__.update(mutated_node.__dict__)
+#                         try :
+#                             mutant_code = ast.unparse(mutated_tree)
+#                         except KeyError as k :
+#                             pass
+#                         # print(mutant_code)
+#                         mutant_filename = get_mutant_filename(filename, len(mutants))
+#                         # print(mutant_filename)
+#                         with open(mutant_filename, 'w') as f:
+#                             f.write(mutant_code)
+
+#                         mutants.append(mutant_filename)
+#                         break
+
+#     return mutants
+
+import random
+
+def apply_mutations_to_file(filename, mutation_operators, num_mutants):
     with open(filename, 'r') as f:
         code = f.read()
-  
+
     original_tree = ast.parse(code)
     mutants = []
-    # print(original_tree)
-    for mutation_operator in mutation_operators:
-        # print(mutation_operator.target_type)
-        if not isinstance(mutation_operator, MutationOperator):
-            raise TypeError("All mutation operators must be of type MutationOperator.")
 
-        if mutation_operator.target_type is None:
-            raise ValueError("All mutation operators must define a target_type attribute.")
+    for i in range(num_mutants):
+        mutated_tree = copy.deepcopy(original_tree)
 
-        for node_to_replace in ast.walk(original_tree):
-            # print(node_to_replace)
-            if not isinstance(node_to_replace, mutation_operator.target_type):
-                # print(node_to_replace._fields)
-                continue
-            # print(node_to_replace)
-            for mutated_node in mutation_operator.mutate_node(node_to_replace):
-                mutated_tree = copy.deepcopy(original_tree)
-                # print(mutated_node)
-                for node in ast.walk(mutated_tree):
-                    # print(node)
-                    # if node is mutated_node and isinstance(node, ast.AST):
-                    if isinstance(node, ast.AST):
-                        # print('Node')
-                        node_to_replace.__dict__.update(mutated_node.__dict__)
-                        try :
-                            mutant_code = ast.unparse(mutated_tree)
-                        except KeyError as k :
-                            pass
-                        # print(mutant_code)
-                        mutant_filename = get_mutant_filename(filename, len(mutants))
-                        # print(mutant_filename)
-                        with open(mutant_filename, 'w') as f:
-                            f.write(mutant_code)
+        for mutation_operator in mutation_operators:
+            if not isinstance(mutation_operator, MutationOperator):
+                raise TypeError("All mutation operators must be of type MutationOperator.")
+            if mutation_operator.target_type is None:
+                raise ValueError("All mutation operators must define a target_type attribute.")
 
-                        mutants.append(mutant_filename)
-                        break
+            nodes_to_mutate = [node for node in ast.walk(mutated_tree) if isinstance(node, mutation_operator.target_type)]
+            if len(nodes_to_mutate) > 0:
+                node_to_replace = random.choice(nodes_to_mutate)
+                for mutated_node in mutation_operator.mutate_node(node_to_replace):
+                    node_to_replace.__dict__.update(mutated_node.__dict__)
+                    break
+
+        mutant_code = ast.unparse(mutated_tree)
+        mutant_filename = get_mutant_filename(filename, i+1)
+        with open(mutant_filename, 'w') as f:
+            f.write(mutant_code)
+        mutants.append(mutant_filename)
 
     return mutants
 
@@ -132,7 +161,8 @@ def build_parser():
     
     parser.add_argument('--list-operators', '-l', action='store_true', help='list available mutation operators')
     parser.add_argument('--py-test', '-p', action='store_true', help='Uses PyTest as the runner')
-
+    parser.add_argument('--num-mutants', '-n', type=int, default=10, help='number of mutants to generate')
+    
     return parser
 
 def list_mutation_operators(mutation_operators):
@@ -158,7 +188,7 @@ def run_bugbane(parser):
         VoidMethodCallMutator(),
         FalseReturnsMutator(),
         TrueReturnsMutator(),
-        NullReturnsMutator(),
+        # NullReturnsMutator(),
         RemoveConditionalsMutator()
         ]
 
@@ -184,7 +214,7 @@ def run_bugbane(parser):
         # original_filename = config.source_file[0]
         # test_filename = config.test_file[0]
         print(original_filename,test_filename)
-        mutants = apply_mutations_to_file(source_folder_path+'/'+original_filename, mutation_operators)
+        mutants = apply_mutations_to_file(source_folder_path+'/'+original_filename,mutation_operators,config.num_mutants)
         # test_mutants = generate_mutant_test_files(original_filename,test_filename,mutants)
         number_of_mutants = len(mutants)
         number_of_test_failed = 0

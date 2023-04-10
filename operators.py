@@ -11,6 +11,9 @@ class MutationOperator:
     def mutate_node(self, node):
         raise NotImplementedError()
     
+    def revert_node(self, node):
+        raise NotImplementedError()
+    
 class ConditionalsBoundaryMutator(MutationOperator):
     """
     A mutation operator that replaces the relational operators <, <=, >, >= with their boundary counterpart.
@@ -363,7 +366,7 @@ class NullReturnsMutator(MutationOperator):
             mutated_node.value = None
             yield mutated_node
 
-    def revert_node(node, mutation):
+    def revert_node(self, node, mutation):
         if isinstance(node, ast.Return) and node.value is None and mutation.target_type == ast.Return:
             return ast.Return(value=mutation.original_node.value)
         else:
@@ -394,7 +397,7 @@ class RemoveConditionalsMutator(MutationOperator):
             return node.body
         return None
     
-    def revert_node(node, original_node):
+    def revert_node(self,node, original_node):
         if isinstance(node, list):
             mutated_node = ast.If(
                 test=original_node.test,
@@ -403,3 +406,16 @@ class RemoveConditionalsMutator(MutationOperator):
             )
             return mutated_node
         return None
+class Return(MutationOperator):
+    target_type = ast.Return
+
+    def __init__(self):
+        self.old_value = None
+
+    def mutate_node(self, node):
+        self.old_value = node.value
+        node.value = ast.Num(n=0)
+        yield node
+
+    def revert_node(self, node):
+        node.value = self.old_value
