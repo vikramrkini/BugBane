@@ -19,53 +19,6 @@ def get_mutant_filename(original_filename, mutant_index):
 def get_mutant_test_filename(original_filename, mutant_index):
     return f"{original_filename[:-3]}mutant{mutant_index}-test.py"
 
-# def apply_mutations_to_file(filename, mutation_operators):
-#     with open(filename, 'r') as f:
-#         code = f.read()
-  
-#     original_tree = ast.parse(code)
-#     mutants = []
-#     # print(original_tree)
-#     for mutation_operator in mutation_operators:
-#         # print(mutation_operator.target_type)
-#         if not isinstance(mutation_operator, MutationOperator):
-#             raise TypeError("All mutation operators must be of type MutationOperator.")
-
-#         if mutation_operator.target_type is None:
-#             raise ValueError("All mutation operators must define a target_type attribute.")
-
-#         for node_to_replace in ast.walk(original_tree):
-#             # print(node_to_replace)
-#             if not isinstance(node_to_replace, mutation_operator.target_type):
-#                 # print(node_to_replace._fields)
-#                 continue
-#             # print(node_to_replace)
-#             for mutated_node in mutation_operator.mutate_node(node_to_replace):
-#                 mutated_tree = copy.deepcopy(original_tree)
-#                 # print(mutated_node)
-#                 for node in ast.walk(mutated_tree):
-#                     # print(node)
-#                     # if node is mutated_node and isinstance(node, ast.AST):
-#                     if isinstance(node, ast.AST):
-#                         # print('Node')
-#                         node_to_replace.__dict__.update(mutated_node.__dict__)
-#                         try :
-#                             mutant_code = ast.unparse(mutated_tree)
-#                         except KeyError as k :
-#                             pass
-#                         # print(mutant_code)
-#                         mutant_filename = get_mutant_filename(filename, len(mutants))
-#                         # print(mutant_filename)
-#                         with open(mutant_filename, 'w') as f:
-#                             f.write(mutant_code)
-
-#                         mutants.append(mutant_filename)
-#                         break
-
-#     return mutants
-
-import random
-
 def apply_mutations_to_file(filename, mutation_operators, num_mutants):
     with open(filename, 'r') as f:
         code = f.read()
@@ -136,12 +89,6 @@ def run_file_against_tests(source_file_path: str, test_file_path: str, unittest 
     except Exception as e:
         print(f"Error running tests: {e}")
         # return False
-
-    # If no exception is raised, assume all tests passed
-    # if result.returncode == 0:
-    #     return True
-    # else:
-    #     return False
     if result.returncode != 0:
         print(result.returncode)
         return False
@@ -177,6 +124,125 @@ def list_mutation_operators(mutation_operators):
     
 
 
+# def run_bugbane(parser):
+    
+#     mutation_operators = [  
+#         MathMutator(),
+#         ConditionalsBoundaryMutator(),
+#         IncrementsMutator(),
+#         InvertNegativesMutator(),
+#         NegateConditionalsMutator(),
+#         VoidMethodCallMutator(),
+#         FalseReturnsMutator(),
+#         TrueReturnsMutator(),
+#         NullReturnsMutator(),
+#         RemoveConditionalsMutator()
+#         ]
+
+#     config = parser.parse_args()
+
+#     if config.list_operators:
+#         list_mutation_operators(mutation_operators)
+        
+#     if config.source_file and config.test_file:
+#         start_time = time.time()
+#         # Extract the folder containing the source file path
+#         source_folder_path = os.path.abspath(config.source_file[0])
+#         source_folder_path = os.path.dirname(source_folder_path)
+#         original_filename = os.path.basename(config.source_file[0])
+#         test_folder_path = os.path.abspath(config.test_file[0])
+#         test_folder_path = os.path.dirname(test_folder_path)
+#         test_filename = os.path.basename(config.test_file[0])
+#         # Change the working directory to the folder containing the source file
+#         print(source_folder_path)
+#         os.chdir(source_folder_path)
+#         # Open the source code file
+        
+#         # original_filename = config.source_file[0]
+#         # test_filename = config.test_file[0]
+#         print(original_filename,test_filename)
+#         mutants = apply_mutations_to_file(source_folder_path+'/'+original_filename,mutation_operators,config.num_mutants)
+#         # test_mutants = generate_mutant_test_files(original_filename,test_filename,mutants)
+#         number_of_mutants = len(mutants)
+#         number_of_test_failed = 0
+#         number_of_test_passed = 0
+#         print(source_folder_path+'/'+original_filename,test_folder_path+'/'+test_filename)
+        
+#         copied_file = create_file_copy(source_folder_path+'/'+original_filename)  
+#         if not config.py_test:
+#             for index in range(number_of_mutants):
+#                 load_file(source_folder_path+'/'+original_filename,mutants[index])
+#                 if run_file_against_tests(source_folder_path+'/'+original_filename,test_folder_path+'/'+test_filename,True):
+#                     number_of_test_passed += 1
+#                 else:
+#                     number_of_test_failed += 1
+#                 # break
+#         else :
+#             for index in range(number_of_mutants):
+                
+#                 load_file(source_folder_path+'/'+original_filename,mutants[index])
+#                 if run_file_against_tests(source_folder_path+'/'+original_filename,test_folder_path+'/'+test_filename,False):
+#                     number_of_test_passed += 1
+#                 else:
+#                     number_of_test_failed += 1
+                
+                
+        
+#         original_filename = load_file(original_filename,copied_file)
+        
+#         print("Number of Mutants Passed: ",number_of_test_passed)
+#         print("Number of Mutants Failed: ",number_of_test_failed)
+#         print("Mutation Score: ", (number_of_test_failed/number_of_mutants)*100)
+#         # run_file_against_tests(original_filename,mutants,test_filename)
+#         end_time = time.time()
+#         elapsed_time = end_time - start_time
+#         # Print the elapsed time in minutes and seconds
+#         print("Elapsed time: %d minutes %d seconds" % (elapsed_time // 60, elapsed_time % 60))
+        
+#         if not config.show_mutants:
+#         # Remove mutated files and modified test files
+#             for mutant_filename in mutants:
+#                 os.remove(mutant_filename)
+#                 modified_test_filename = f"{test_filename}-mutant"
+#                 if os.path.exists(modified_test_filename):
+#                     os.remove(modified_test_filename)
+#         os.remove(original_filename[:-3] + '-copy.py')
+
+
+def find_matching_test_file(source_file_path, test_files):
+    """
+    Given the path of a source file and a list of test file paths, returns the name of a test file that
+    matches the source file. Returns None if no matching test file is found.
+    """
+    source_file_name = os.path.basename(source_file_path)
+    for file_path in test_files:
+        file_name = os.path.basename(file_path)
+        if file_name.startswith("test_") and file_name.endswith(".py"):
+            # with open(file_path, "r") as test_file:
+            #     contents = test_file.read()
+            #     if source_file_name in contents:
+            #         return file_name
+            if source_file_name == file_name.replace("test_",''):
+                return file_name
+    return None
+
+def get_py_files(folder_path):
+    """
+    Returns a list of the Python files in the given folder and its subfolders.
+    
+    Parameters:
+        folder_path (str): The path of the folder to search for Python files.
+        
+    Returns:
+        A list of the Python files in the given folder and its subfolders.
+    """
+    py_files = []
+    for root, dirs, files in os.walk(folder_path):
+        for file in files:
+            if file.endswith('.py'):
+                py_files.append(os.path.join(root, file))
+    return py_files
+
 def run_bugbane(parser):
     
     mutation_operators = [  
@@ -188,9 +254,9 @@ def run_bugbane(parser):
         VoidMethodCallMutator(),
         FalseReturnsMutator(),
         TrueReturnsMutator(),
-        # NullReturnsMutator(),
+        NullReturnsMutator(),
         RemoveConditionalsMutator()
-        ]
+    ]
 
     config = parser.parse_args()
 
@@ -199,78 +265,61 @@ def run_bugbane(parser):
         
     if config.source_file and config.test_file:
         start_time = time.time()
-        # Extract the folder containing the source file path
         source_folder_path = os.path.abspath(config.source_file[0])
-        source_folder_path = os.path.dirname(source_folder_path)
-        original_filename = os.path.basename(config.source_file[0])
         test_folder_path = os.path.abspath(config.test_file[0])
-        test_folder_path = os.path.dirname(test_folder_path)
-        test_filename = os.path.basename(config.test_file[0])
-        # Change the working directory to the folder containing the source file
-        print(source_folder_path)
-        os.chdir(source_folder_path)
-        # Open the source code file
-        
-        # original_filename = config.source_file[0]
-        # test_filename = config.test_file[0]
-        print(original_filename,test_filename)
-        mutants = apply_mutations_to_file(source_folder_path+'/'+original_filename,mutation_operators,config.num_mutants)
-        # test_mutants = generate_mutant_test_files(original_filename,test_filename,mutants)
-        number_of_mutants = len(mutants)
+        print(test_folder_path)
+        original_files = get_py_files(source_folder_path)
+        test_files = get_py_files(test_folder_path)
+        print(original_files)
+        print(test_files)
         number_of_test_failed = 0
         number_of_test_passed = 0
-        print(source_folder_path+'/'+original_filename,test_folder_path+'/'+test_filename)
-        
-        copied_file = create_file_copy(source_folder_path+'/'+original_filename)  
-        if not config.py_test:
-            for index in range(number_of_mutants):
-                load_file(source_folder_path+'/'+original_filename,mutants[index])
-                if run_file_against_tests(source_folder_path+'/'+original_filename,test_folder_path+'/'+test_filename,True):
-                    number_of_test_passed += 1
-                else:
-                    number_of_test_failed += 1
-                # break
-        else :
-            for index in range(number_of_mutants):
+        total_number_of_mutants = 0
+        for original_filename in original_files:
+            test_filename = find_matching_test_file(original_filename, test_files)
+            if test_filename:
+                os.chdir(source_folder_path)
+                mutants = apply_mutations_to_file(original_filename,mutation_operators,config.num_mutants)
+                number_of_mutants = len(mutants)
+                total_number_of_mutants += number_of_mutants
+                copied_file = create_file_copy(original_filename)  
+                if not config.py_test:
+                    for index in range(number_of_mutants):
+                        load_file(original_filename,mutants[index])
+                        if run_file_against_tests(original_filename,test_folder_path+'/'+test_filename,True):
+                            number_of_test_passed += 1
+                        else:
+                            number_of_test_failed += 1
+                else :
+                    for index in range(number_of_mutants):
+                        load_file(original_filename,mutants[index])
+                        if run_file_against_tests(original_filename,test_folder_path+'/'+test_filename,False):
+                            number_of_test_passed += 1
+                        else:
+                            number_of_test_failed += 1
                 
-                load_file(source_folder_path+'/'+original_filename,mutants[index])
-                if run_file_against_tests(source_folder_path+'/'+original_filename,test_folder_path+'/'+test_filename,False):
-                    number_of_test_passed += 1
-                else:
-                    number_of_test_failed += 1
-                
-                
-        
-        original_filename = load_file(original_filename,copied_file)
-        
+                original_filename = load_file(original_filename,copied_file)
+
+
+                if not config.show_mutants:
+                    for mutant_filename in mutants:
+                        os.remove(mutant_filename)
+                        modified_test_filename = f"{test_filename}-mutant"
+                        if os.path.exists(modified_test_filename):
+                            os.remove(modified_test_filename)
+                os.remove(original_filename[:-3] + '-copy.py')
+
+            else:
+                print(f"\nTest file not found for {original_filename}")
+                        
+        print(f"\n{original_filename} -> {test_filename}")
         print("Number of Mutants Passed: ",number_of_test_passed)
         print("Number of Mutants Failed: ",number_of_test_failed)
-        print("Mutation Score: ", (number_of_test_failed/number_of_mutants)*100)
-        # run_file_against_tests(original_filename,mutants,test_filename)
+        print("Mutation Score: ", (number_of_test_failed/total_number_of_mutants)*100)
+        
         end_time = time.time()
         elapsed_time = end_time - start_time
-        # Print the elapsed time in minutes and seconds
         print("Elapsed time: %d minutes %d seconds" % (elapsed_time // 60, elapsed_time % 60))
-        
-        if not config.show_mutants:
-        # Remove mutated files and modified test files
-            for mutant_filename in mutants:
-                os.remove(mutant_filename)
-                modified_test_filename = f"{test_filename}-mutant"
-                if os.path.exists(modified_test_filename):
-                    os.remove(modified_test_filename)
-        os.remove(original_filename[:-3] + '-copy.py')
-        # for mutant_test_filename in test_mutants:
-        #     os.remove(mutant_test_filename)
-        #     modified_test_filename = f"{test_filename}-mutant-test"
-        #     if os.path.exists(modified_test_filename):
-        #         os.remove(modified_test_filename)
-        #  Remove the folder for mutated files
-        # basename = os.path.basename(original_filename)
-        # dirname = os.path.dirname(original_filename)
-        # mutant_folder = os.path.join(dirname, basename + '_mutants')
-        # shutil.rmtree(mutant_folder)
-
 if __name__ == '__main__':
     parser = build_parser()
     run_bugbane(parser)
