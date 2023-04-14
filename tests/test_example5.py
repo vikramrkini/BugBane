@@ -1,5 +1,5 @@
 import unittest
-from example5 import haversine
+from ..src.example5 import haversine
 
 class TestHaversine(unittest.TestCase):
     def test_same_coordinate(self):

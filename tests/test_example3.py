@@ -1,5 +1,5 @@
 import unittest
-from example3 import find_largest
+from ..src.example3 import find_largest
 class TestFindLargest(unittest.TestCase):
     def test_find_largest_basic(self):
         numbers = [1, 2, 3, 4, 5]

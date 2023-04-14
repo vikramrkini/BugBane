@@ -49,3 +49,6 @@ coverage.xml
 # Sphinx documentation
 docs/_build/
 BeautifulSoup4-master/
+flask/
+scrapy/
+ansible-devel/

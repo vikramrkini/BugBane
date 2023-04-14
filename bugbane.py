@@ -2,16 +2,18 @@ import ast
 import argparse
 import copy
 import sys
-sys.path.append('/Users/vikramkini/CS527/project/bugbane/ansible-devel/lib/ansible')
+# sys.path.append('/Users/vikramkini/CS527/project/bugbane/ansible-devel/lib/ansible')
 import subprocess
 import os
 import re
 import time
 import astor
 import random
+from yattag import Doc
 
+from report import generate_html_report
 # from operators import MutationOperator,ArithmeticOperatorMutationOperator,NegateBooleanMutationOperator,ReplaceStringMutationOperator,RemoveUnaryOperatorMutationOperator,ReplaceIntegerMutationOperator,ReplaceVariableMutationOperator,ReturnValuesMutator,InvertNegativesMutator,LogicalOperatorMutationOperator,ComparisonOperatorMutationOperator,IncrementsMutator,MathMutator,NegateConditionalsMutator, EmptyReturnsMutator
-from operators import Return, MutationOperator, ConditionalsBoundaryMutator, IncrementsMutator, InvertNegativesMutator, MathMutator, NegateConditionalsMutator, VoidMethodCallMutator, FalseReturnsMutator, TrueReturnsMutator, NullReturnsMutator,RemoveConditionalsMutator
+from operators import Return, MutationOperator, ConditionalsBoundaryMutator, IncrementsMutator, InvertNegativesMutator, MathMutator, NegateConditionalsMutator, VoidMethodCallMutator, FalseReturnsMutator, TrueReturnsMutator, NullReturnsMutator,RemoveConditionalsMutator, NotConditionMutator , BooleanInvertMutator , StatementDeletionMutator ,IfStatementSwapMutator , FunctionCallArgumentSwapMutator , BooleanOperatorMutator 
 def get_mutant_filename(original_filename, mutant_index):
     return f"{original_filename[:-3]}mutant{mutant_index}.py"
 
@@ -84,7 +86,7 @@ def run_file_against_tests(source_file_path: str, test_file_path: str, unittest 
         if unittest:
             result = subprocess.run(["python", "-m", "unittest", test_file], cwd=test_dir, env=os.environ.copy())
         else:
-            result = subprocess.run(["pytest" ,test_file], cwd=test_dir, env=os.environ.copy())
+            result = subprocess.run(["pytest", "--cache-clear",test_file], cwd=test_dir, env=os.environ.copy())
         print(result)
     except Exception as e:
         print(f"Error running tests: {e}")
@@ -109,7 +111,8 @@ def build_parser():
     parser.add_argument('--list-operators', '-l', action='store_true', help='list available mutation operators')
     parser.add_argument('--py-test', '-p', action='store_true', help='Uses PyTest as the runner')
     parser.add_argument('--num-mutants', '-n', type=int, default=10, help='number of mutants to generate')
-    
+    parser.add_argument('--exclude-operators', '-x', type=str, nargs='+', help='mutation operators to exclude')
+    parser.add_argument('--report', '-r', action='store_true', help='generate an HTML report')
     return parser
 
 def list_mutation_operators(mutation_operators):
@@ -120,94 +123,6 @@ def list_mutation_operators(mutation_operators):
         print(" ")
         print(mutation_operator.__doc__)
         print('---------------------------------------------------------------------------------')
-
-    
-
-
-# def run_bugbane(parser):
-    
-#     mutation_operators = [  
-#         MathMutator(),
-#         ConditionalsBoundaryMutator(),
-#         IncrementsMutator(),
-#         InvertNegativesMutator(),
-#         NegateConditionalsMutator(),
-#         VoidMethodCallMutator(),
-#         FalseReturnsMutator(),
-#         TrueReturnsMutator(),
-#         NullReturnsMutator(),
-#         RemoveConditionalsMutator()
-#         ]
-
-#     config = parser.parse_args()
-
-#     if config.list_operators:
-#         list_mutation_operators(mutation_operators)
-        
-#     if config.source_file and config.test_file:
-#         start_time = time.time()
-#         # Extract the folder containing the source file path
-#         source_folder_path = os.path.abspath(config.source_file[0])
-#         source_folder_path = os.path.dirname(source_folder_path)
-#         original_filename = os.path.basename(config.source_file[0])
-#         test_folder_path = os.path.abspath(config.test_file[0])
-#         test_folder_path = os.path.dirname(test_folder_path)
-#         test_filename = os.path.basename(config.test_file[0])
-#         # Change the working directory to the folder containing the source file
-#         print(source_folder_path)
-#         os.chdir(source_folder_path)
-#         # Open the source code file
-        
-#         # original_filename = config.source_file[0]
-#         # test_filename = config.test_file[0]
-#         print(original_filename,test_filename)
-#         mutants = apply_mutations_to_file(source_folder_path+'/'+original_filename,mutation_operators,config.num_mutants)
-#         # test_mutants = generate_mutant_test_files(original_filename,test_filename,mutants)
-#         number_of_mutants = len(mutants)
-#         number_of_test_failed = 0
-#         number_of_test_passed = 0
-#         print(source_folder_path+'/'+original_filename,test_folder_path+'/'+test_filename)
-        
-#         copied_file = create_file_copy(source_folder_path+'/'+original_filename)  
-#         if not config.py_test:
-#             for index in range(number_of_mutants):
-#                 load_file(source_folder_path+'/'+original_filename,mutants[index])
-#                 if run_file_against_tests(source_folder_path+'/'+original_filename,test_folder_path+'/'+test_filename,True):
-#                     number_of_test_passed += 1
-#                 else:
-#                     number_of_test_failed += 1
-#                 # break
-#         else :
-#             for index in range(number_of_mutants):
-                
-#                 load_file(source_folder_path+'/'+original_filename,mutants[index])
-#                 if run_file_against_tests(source_folder_path+'/'+original_filename,test_folder_path+'/'+test_filename,False):
-#                     number_of_test_passed += 1
-#                 else:
-#                     number_of_test_failed += 1
-                
-                
-        
-#         original_filename = load_file(original_filename,copied_file)
-        
-#         print("Number of Mutants Passed: ",number_of_test_passed)
-#         print("Number of Mutants Failed: ",number_of_test_failed)
-#         print("Mutation Score: ", (number_of_test_failed/number_of_mutants)*100)
-#         # run_file_against_tests(original_filename,mutants,test_filename)
-#         end_time = time.time()
-#         elapsed_time = end_time - start_time
-#         # Print the elapsed time in minutes and seconds
-#         print("Elapsed time: %d minutes %d seconds" % (elapsed_time // 60, elapsed_time % 60))
-        
-#         if not config.show_mutants:
-#         # Remove mutated files and modified test files
-#             for mutant_filename in mutants:
-#                 os.remove(mutant_filename)
-#                 modified_test_filename = f"{test_filename}-mutant"
-#                 if os.path.exists(modified_test_filename):
-#                     os.remove(modified_test_filename)
-#         os.remove(original_filename[:-3] + '-copy.py')
-
 
 def find_matching_test_file(source_file_path, test_files):
     """
@@ -225,6 +140,8 @@ def find_matching_test_file(source_file_path, test_files):
             if source_file_name == file_name.replace("test_",''):
                 return file_name
     return None
+
+
 
 def get_py_files(folder_path):
     """
@@ -245,7 +162,7 @@ def get_py_files(folder_path):
 
 def run_bugbane(parser):
     
-    mutation_operators = [  
+    all_mutation_operators = [  
         MathMutator(),
         ConditionalsBoundaryMutator(),
         IncrementsMutator(),
@@ -255,10 +172,23 @@ def run_bugbane(parser):
         FalseReturnsMutator(),
         TrueReturnsMutator(),
         NullReturnsMutator(),
-        RemoveConditionalsMutator()
+        RemoveConditionalsMutator(),
+        NotConditionMutator(),
+        BooleanInvertMutator(),
+        # StatementDeletionMutator(),
+        IfStatementSwapMutator(), 
+        FunctionCallArgumentSwapMutator(), 
+        BooleanOperatorMutator()
     ]
 
     config = parser.parse_args()
+
+    # Filter out the excluded mutation operators
+    if config.exclude_operators:
+        excluded_operator_names = set(config.exclude_operators)
+        mutation_operators = [op for op in all_mutation_operators if type(op).__name__ not in excluded_operator_names]
+    else:
+        mutation_operators = all_mutation_operators
 
     if config.list_operators:
         list_mutation_operators(mutation_operators)
@@ -270,8 +200,8 @@ def run_bugbane(parser):
         print(test_folder_path)
         original_files = get_py_files(source_folder_path)
         test_files = get_py_files(test_folder_path)
-        print(original_files)
-        print(test_files)
+        # print(original_files)
+        # print(test_files)
         number_of_test_failed = 0
         number_of_test_passed = 0
         total_number_of_mutants = 0
@@ -311,15 +241,20 @@ def run_bugbane(parser):
 
             else:
                 print(f"\nTest file not found for {original_filename}")
-                        
+                  
         print(f"\n{original_filename} -> {test_filename}")
         print("Number of Mutants Passed: ",number_of_test_passed)
         print("Number of Mutants Failed: ",number_of_test_failed)
+        mutation_score = (number_of_test_failed/total_number_of_mutants)*100
         print("Mutation Score: ", (number_of_test_failed/total_number_of_mutants)*100)
         
         end_time = time.time()
         elapsed_time = end_time - start_time
         print("Elapsed time: %d minutes %d seconds" % (elapsed_time // 60, elapsed_time % 60))
+
+        if config.report:
+            generate_html_report(number_of_mutants,number_of_test_passed,number_of_test_failed,mutation_score)
+
 if __name__ == '__main__':
     parser = build_parser()
     run_bugbane(parser)
