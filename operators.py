@@ -419,3 +419,175 @@ class Return(MutationOperator):
 
     def revert_node(self, node):
         node.value = self.old_value
+
+
+class NotConditionMutator(MutationOperator):
+    """
+    A mutation operator that adds a 'not' in the if condition.
+
+    Example:
+    --------
+    If the input node is "if x < y:", the mutated node will be "if not x < y:".
+    """
+    def __init__(self):
+        super().__init__()
+        self.target_type = ast.If
+
+    def mutate_node(self, node):
+        if isinstance(node, ast.If):
+            # Convert "if not" to "if"
+            if isinstance(node.test, ast.UnaryOp) and isinstance(node.test.op, ast.Not):
+                mutated_node = copy.deepcopy(node)
+                mutated_node.test = node.test.operand
+                yield mutated_node
+            # Add "not" to the if condition
+            else:
+                mutated_node = copy.deepcopy(node)
+                mutated_node.test = ast.UnaryOp(op=ast.Not(), operand=node.test)
+                yield mutated_node
+
+    def revert_node(self, node):
+        if isinstance(node, ast.If):
+            # Revert "if not" to "if"
+            if isinstance(node.test, ast.UnaryOp) and isinstance(node.test.op, ast.Not):
+                reverted_node = copy.deepcopy(node)
+                reverted_node.test = node.test.operand
+                return reverted_node
+            # Remove "not" from the if condition
+            else:
+                reverted_node = copy.deepcopy(node)
+                reverted_node.test = node.test.operand
+                return reverted_node
+
+class BooleanInvertMutator(MutationOperator):
+    """
+    A mutation operator that changes True assignments to False and False assignments to True.
+
+    Example:
+    --------
+    If the input node is "x = True;", the mutated node will be "x = False;".
+    """
+    def __init__(self):
+        super().__init__()
+        self.target_type = ast.Assign
+
+    def mutate_node(self, node):
+        if isinstance(node, ast.Assign):
+            # Check if the assigned value is a boolean
+            if isinstance(node.value, ast.NameConstant) and isinstance(node.value.value, bool):
+                mutated_node = copy.deepcopy(node)
+                mutated_node.value = ast.NameConstant(value=not mutated_node.value.value)
+                yield mutated_node
+
+    def revert_node(self, node):
+        if isinstance(node, ast.Assign):
+            # Check if the assigned value is a boolean
+            if isinstance(node.value, ast.NameConstant) and isinstance(node.value.value, bool):
+                reverted_node = copy.deepcopy(node)
+                reverted_node.value = ast.NameConstant(value=not reverted_node.value.value)
+                return reverted_node
+
+class IfStatementSwapMutator(MutationOperator):
+    """
+    A mutation operator that swaps the order of the conditional branches in an if statement.
+
+    Example:
+    --------
+    If the input node is "if x < y:\n    foo()\nelse:\n    bar()", the mutated node will be "if not x < y:\n    bar()\nelse:\n    foo()".
+    """
+    def __init__(self):
+        super().__init__()
+        self.target_type = ast.If
+        pass
+
+    def mutate_node(self, node):
+        if isinstance(node, ast.If):
+            mutated_node = copy.deepcopy(node)
+            mutated_node.body, mutated_node.orelse = mutated_node.orelse, mutated_node.body
+            mutated_node.test = ast.UnaryOp(op=ast.Not(), operand=node.test)
+            yield mutated_node
+
+    def revert_node(self, node):
+        if isinstance(node, ast.If):
+            reverted_node = copy.deepcopy(node)
+            reverted_node.body, reverted_node.orelse = reverted_node.orelse, reverted_node.body
+            reverted_node.test = reverted_node.test.operand
+            return reverted_node
+        
+
+class FunctionCallArgumentSwapMutator(MutationOperator):
+    """
+    A mutation operator that swaps the order of arguments in a function call.
+
+    Example:
+    --------
+    If the input node is "foo(x, y)", the mutated node will be "foo(y, x)".
+    """
+    def __init__(self):
+        super().__init__()
+        self.target_type = ast.Call
+        
+
+    def mutate_node(self, node):
+        if isinstance(node, ast.Call):
+            for i in range(len(node.args)):
+                mutated_args = copy.deepcopy(node.args)
+                mutated_args[i], mutated_args[(i+1)%len(mutated_args)] = mutated_args[(i+1)%len(mutated_args)], mutated_args[i]
+                mutated_node = copy.deepcopy(node)
+                mutated_node.args = mutated_args
+                yield mutated_node
+
+    def revert_node(self, node):
+        return copy.deepcopy(node)
+
+class StatementDeletionMutator(MutationOperator):
+    """
+    A mutation operator that deletes a statement from the code.
+
+    Example:
+    --------
+    If the input node is "x = y + 2;\nfoo(x);", the mutated node will be "foo(x);".
+    """
+    def __init__(self):
+        super().__init__()
+        self.target_type = ast.stmt
+               
+
+    def mutate_node(self, node):
+        if isinstance(node, ast.stmt):
+            mutated_node = None
+            if hasattr(node, "parent"):
+                mutated_node = copy.deepcopy(node.parent)
+                for i, child in enumerate(mutated_node.body):
+                    if child == node:
+                        mutated_node.body.pop(i)
+                        break
+            yield mutated_node
+
+    def revert_node(self, node):
+        return copy.deepcopy(node)
+    
+class BooleanOperatorMutator(MutationOperator):
+    """
+    A mutation operator that replaces boolean operators with their counterparts.
+
+    Example:
+    --------
+    If the input node is "x and y", the mutated node will be "x or y".
+    """
+    def __init__(self):
+        super().__init__()
+        self.target_type = ast.BoolOp
+
+    def mutate_node(self, node):
+        if isinstance(node, ast.BoolOp) and isinstance(node.op, ast.And):
+            mutated_node = copy.deepcopy(node)
+            mutated_node.op = ast.Or()
+            yield mutated_node
+        elif isinstance(node, ast.BoolOp) and isinstance(node.op, ast.Or):
+            mutated_node = copy.deepcopy(node)
+            mutated_node.op = ast.And()
+            yield mutated_node
+
+    def revert_node(self, node):
+        return copy.deepcopy(node)

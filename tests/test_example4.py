@@ -1,6 +1,6 @@
 import sys
 
-from example4 import add_numbers, subtract_numbers,multiply_numbers,divide_numbers,is_even,is_odd, compare_numbers, remove_unary_operator,replace_string,replace_variable,replace_integer,negate_boolean,invert_negatives
+from ..src.example4 import add_numbers, subtract_numbers,multiply_numbers,divide_numbers,is_even,is_odd, compare_numbers, remove_unary_operator,replace_string,replace_variable,replace_integer,negate_boolean,invert_negatives
 
 def test_add_numbers():
     assert add_numbers(1, 2) == 3

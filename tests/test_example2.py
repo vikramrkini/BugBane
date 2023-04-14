@@ -1,6 +1,6 @@
 
 import unittest
-from example2 import multiply , divide ,negate_boolean, remove_unary_operator , replace_integer, complex_function
+from ..src.example2 import multiply , divide ,negate_boolean, remove_unary_operator , replace_integer, complex_function
 class TestMutants(unittest.TestCase):
     def test_multiply(self):
         self.assertEqual(multiply(2, 3), 6)

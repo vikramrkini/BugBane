@@ -1,4 +1,4 @@
-from example1 import calculate_fibonacci, generate_primes
+from ..src.sub.example1 import calculate_fibonacci, generate_primes
 
 def test_calculate_fibonacci():
     assert calculate_fibonacci(0) == 0
