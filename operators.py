@@ -591,3 +591,33 @@ class BooleanOperatorMutator(MutationOperator):
 
     def revert_node(self, node):
         return copy.deepcopy(node)
+    
+class BitwiseOperatorMutator(MutationOperator):
+    """
+    A mutation operator that mutates bitwise and (&) and or (|) by swapping them.
+    """
+    def __init__(self):
+        super().__init__()
+        self.target_type = ast.BinOp
+
+    def mutate_node(self, node):
+        if isinstance(node.op, (ast.BitAnd, ast.BitOr, ast.BitXor)):
+            # Swap the operators
+            swapped_node = copy.deepcopy(node)
+            if isinstance(node.op, ast.BitAnd):
+                swapped_node.op = ast.BitOr()
+            elif isinstance(node.op, ast.BitOr):
+                swapped_node.op = ast.BitXor()
+            elif isinstance(node.op, ast.BitXor):
+                swapped_node.op = ast.BitAnd()
+            yield swapped_node
+
+    def revert_node(self, node):
+        reverted_node = copy.deepcopy(node)
+        if isinstance(node.op, ast.BitAnd):
+            reverted_node.op = ast.BitXor()
+        elif isinstance(node.op, ast.BitOr):
+            reverted_node.op = ast.BitAnd()
+        elif isinstance(node.op, ast.BitXor):
+            reverted_node.op = ast.BitOr()
+        return reverted_node

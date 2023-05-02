@@ -36,7 +36,7 @@ def generate_html_report(number_of_mutants, number_of_test_passed, number_of_tes
                         text(f'{mutation_score:.2f}%')
 
     # Ensure the reports directory exists
-    os.makedirs('reports', exist_ok=True)
+    os.makedirs('/Users/vikramkini/CS527/project/bugbane/scrapyreports', exist_ok=True)
 
     # Save the report with a timestamp in the filename
     timestamp = datetime.now().strftime('%Y%m%d-%H%M%S')
