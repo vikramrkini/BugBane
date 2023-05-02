@@ -1,0 +1,5 @@
+table {
+  width: 100%;
+  height: 300px; /* set the height of the table to 300 pixels */
+  border-collapse: collapse; /* remove the default spacing between table cells */
+}
