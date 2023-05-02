@@ -156,7 +156,7 @@ def get_py_files(folder_path):
     py_files = []
     for root, dirs, files in os.walk(folder_path):
         for file in files:
-            if file.endswith('.py'):
+            if file.endswith('.py') or not file.startswith('test'):
                 py_files.append(os.path.join(root, file))
     return py_files
 
