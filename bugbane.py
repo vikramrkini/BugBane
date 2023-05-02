@@ -13,7 +13,7 @@ from yattag import Doc
 
 from report import generate_html_report
 # from operators import MutationOperator,ArithmeticOperatorMutationOperator,NegateBooleanMutationOperator,ReplaceStringMutationOperator,RemoveUnaryOperatorMutationOperator,ReplaceIntegerMutationOperator,ReplaceVariableMutationOperator,ReturnValuesMutator,InvertNegativesMutator,LogicalOperatorMutationOperator,ComparisonOperatorMutationOperator,IncrementsMutator,MathMutator,NegateConditionalsMutator, EmptyReturnsMutator
-from operators import Return, MutationOperator, ConditionalsBoundaryMutator, IncrementsMutator, InvertNegativesMutator, MathMutator, NegateConditionalsMutator, VoidMethodCallMutator, FalseReturnsMutator, TrueReturnsMutator, NullReturnsMutator,RemoveConditionalsMutator, NotConditionMutator , BooleanInvertMutator , StatementDeletionMutator ,IfStatementSwapMutator , FunctionCallArgumentSwapMutator , BooleanOperatorMutator 
+from operators import Return, MutationOperator, ConditionalsBoundaryMutator, IncrementsMutator, InvertNegativesMutator, MathMutator, NegateConditionalsMutator, VoidMethodCallMutator, FalseReturnsMutator, TrueReturnsMutator, NullReturnsMutator,RemoveConditionalsMutator, NotConditionMutator , BooleanInvertMutator , StatementDeletionMutator ,IfStatementSwapMutator , FunctionCallArgumentSwapMutator , BooleanOperatorMutator, BitwiseOperatorMutator
 def get_mutant_filename(original_filename, mutant_index):
     return f"{original_filename[:-3]}mutant{mutant_index}.py"
 
@@ -178,7 +178,8 @@ def run_bugbane(parser):
         # StatementDeletionMutator(),
         IfStatementSwapMutator(), 
         FunctionCallArgumentSwapMutator(), 
-        BooleanOperatorMutator()
+        BooleanOperatorMutator(),
+        BitwiseOperatorMutator()
     ]
 
     config = parser.parse_args()
