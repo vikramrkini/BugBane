@@ -2,7 +2,6 @@ import ast
 import argparse
 import copy
 import sys
-# sys.path.append('/Users/vikramkini/CS527/project/bugbane/ansible-devel/lib/ansible')
 import subprocess
 import os
 import re
@@ -10,6 +9,7 @@ import time
 import astor
 import random
 from yattag import Doc
+import difflib
 
 from report import generate_html_report
 # from operators import MutationOperator,ArithmeticOperatorMutationOperator,NegateBooleanMutationOperator,ReplaceStringMutationOperator,RemoveUnaryOperatorMutationOperator,ReplaceIntegerMutationOperator,ReplaceVariableMutationOperator,ReturnValuesMutator,InvertNegativesMutator,LogicalOperatorMutationOperator,ComparisonOperatorMutationOperator,IncrementsMutator,MathMutator,NegateConditionalsMutator, EmptyReturnsMutator
@@ -45,12 +45,18 @@ def apply_mutations_to_file(filename, mutation_operators, num_mutants):
                     break
 
         mutant_code = ast.unparse(mutated_tree)
+
+
+        codelines = code.splitlines()
+        mcodelines = mutant_code.splitlines()
+        html_diff = difflib.HtmlDiff(wrapcolumn=80).make_file(codelines, mcodelines)
+
         mutant_filename = get_mutant_filename(filename, i+1)
         with open(mutant_filename, 'w') as f:
             f.write(mutant_code)
         mutants.append(mutant_filename)
 
-    return mutants
+    return mutants,html_diff
 
 def create_file_copy(input_file_path):
     # Read the contents of the input file
@@ -86,7 +92,7 @@ def run_file_against_tests(source_file_path: str, test_file_path: str, unittest 
         if unittest:
             result = subprocess.run(["python", "-m", "unittest", test_file], cwd=test_dir, env=os.environ.copy())
         else:
-            result = subprocess.run(["pytest", "--cache-clear",test_file], cwd=test_dir, env=os.environ.copy())
+            result = subprocess.run(["pytest", "--cache-clear","-v","--timeout=30",test_file], cwd=test_dir, env=os.environ.copy())
         print(result)
     except Exception as e:
         print(f"Error running tests: {e}")
@@ -131,19 +137,22 @@ def find_matching_test_file(source_file_path, test_files):
     """
     source_file_name = os.path.basename(source_file_path)
     for file_path in test_files:
+        
         file_name = os.path.basename(file_path)
+        if file_name.endswith('.pyc'):
+            pass
         if file_name.startswith("test_") and file_name.endswith(".py"):
             # with open(file_path, "r") as test_file:
             #     contents = test_file.read()
             #     if source_file_name in contents:
             #         return file_name
-            if source_file_name == file_name.replace("test_",''):
+            if source_file_name == file_name.replace("test_",'') or source_file_name == file_name.replace("test",''):
                 return file_name
     return None
 
 
 
-def get_py_files(folder_path):
+def get_py_files(folder_path,testfile):
     """
     Returns a list of the Python files in the given folder and its subfolders.
     
@@ -155,10 +164,21 @@ def get_py_files(folder_path):
     """
     py_files = []
     for root, dirs, files in os.walk(folder_path):
-        for file in files:
-            if file.endswith('.py') or not file.startswith('test'):
-                py_files.append(os.path.join(root, file))
+        if not testfile:
+            for file in files:
+                if file.endswith('.py') or not file.startswith('test'):
+                    py_files.append(os.path.join(root, file))
+        else :
+            for file in files:
+                if file.endswith('.py') or file.startswith('test'):
+                    py_files.append(os.path.join(root, file))
     return py_files
+
+def remove_existing_mutants(folder_path):
+    for root, dirs, files in os.walk(folder_path):
+        for file in files:
+            if re.match(r'.*mutant\d+\.py', file):
+                os.remove(os.path.join(root, file))
 
 def run_bugbane(parser):
     
@@ -176,7 +196,7 @@ def run_bugbane(parser):
         NotConditionMutator(),
         BooleanInvertMutator(),
         # StatementDeletionMutator(),
-        IfStatementSwapMutator(), 
+        # IfStatementSwapMutator(), 
         FunctionCallArgumentSwapMutator(), 
         BooleanOperatorMutator(),
         BitwiseOperatorMutator()
@@ -198,9 +218,9 @@ def run_bugbane(parser):
         start_time = time.time()
         source_folder_path = os.path.abspath(config.source_file[0])
         test_folder_path = os.path.abspath(config.test_file[0])
-        print(test_folder_path)
-        original_files = get_py_files(source_folder_path)
-        test_files = get_py_files(test_folder_path)
+        remove_existing_mutants(source_folder_path)
+        original_files = get_py_files(source_folder_path,False)
+        test_files = get_py_files(test_folder_path,True)
         # print(original_files)
         # print(test_files)
         number_of_test_failed = 0
@@ -210,7 +230,7 @@ def run_bugbane(parser):
             test_filename = find_matching_test_file(original_filename, test_files)
             if test_filename:
                 os.chdir(source_folder_path)
-                mutants = apply_mutations_to_file(original_filename,mutation_operators,config.num_mutants)
+                mutants,html_diff = apply_mutations_to_file(original_filename,mutation_operators,config.num_mutants)
                 number_of_mutants = len(mutants)
                 total_number_of_mutants += number_of_mutants
                 copied_file = create_file_copy(original_filename)  
@@ -226,6 +246,10 @@ def run_bugbane(parser):
                         load_file(original_filename,mutants[index])
                         if run_file_against_tests(original_filename,test_folder_path+'/'+test_filename,False):
                             number_of_test_passed += 1
+                            file = open("report.html", "a")
+                            file.write(f"<h3> {original_filename} -- {test_filename} </h3>")
+                            file.write(html_diff)
+                            file.close()
                         else:
                             number_of_test_failed += 1
                 
@@ -241,7 +265,8 @@ def run_bugbane(parser):
                 os.remove(original_filename[:-3] + '-copy.py')
 
             else:
-                print(f"\nTest file not found for {original_filename}")
+                if '.pyc' not in original_filename:
+                    print(f"\nTest file not found for {original_filename}")
                   
         print(f"\n{original_filename} -> {test_filename}")
         print("Number of Mutants Passed: ",number_of_test_passed)
@@ -253,8 +278,8 @@ def run_bugbane(parser):
         elapsed_time = end_time - start_time
         print("Elapsed time: %d minutes %d seconds" % (elapsed_time // 60, elapsed_time % 60))
 
-        if config.report:
-            generate_html_report(number_of_mutants,number_of_test_passed,number_of_test_failed,mutation_score)
+        # if config.report:
+        #     generate_html_report(number_of_mutants,number_of_test_passed,number_of_test_failed,mutation_score)
 
 if __name__ == '__main__':
     parser = build_parser()

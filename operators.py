@@ -3,6 +3,17 @@ import copy
 import math
 
 #### This file contains all the operators defined in Bugbane.
+def fix_indentation(node):
+    import _ast
+
+    def visit_node(node, level):
+        if isinstance(node, _ast.AST):
+            if hasattr(node, "col_offset"):
+                node.col_offset = level * 4
+            for child in ast.iter_child_nodes(node):
+                visit_node(child, level + 1)
+
+    visit_node(node, 0)
 
 class MutationOperator:
     def __init__(self):
@@ -487,6 +498,33 @@ class BooleanInvertMutator(MutationOperator):
                 reverted_node.value = ast.NameConstant(value=not reverted_node.value.value)
                 return reverted_node
 
+# class IfStatementSwapMutator(MutationOperator):
+#     """
+#     A mutation operator that swaps the order of the conditional branches in an if statement.
+
+#     Example:
+#     --------
+#     If the input node is "if x < y:\n    foo()\nelse:\n    bar()", the mutated node will be "if not x < y:\n    bar()\nelse:\n    foo()".
+#     """
+#     def __init__(self):
+#         super().__init__()
+#         self.target_type = ast.If
+#         pass
+
+#     def mutate_node(self, node):
+#         if isinstance(node, ast.If):
+#             mutated_node = copy.deepcopy(node)
+#             mutated_node.body, mutated_node.orelse = mutated_node.orelse, mutated_node.body
+#             mutated_node.test = ast.UnaryOp(op=ast.Not(), operand=node.test)
+#             fix_indentation(mutated_node)
+#             yield mutated_node
+
+#     def revert_node(self, node):
+#         if isinstance(node, ast.If):
+#             reverted_node = copy.deepcopy(node)
+#             reverted_node.body, reverted_node.orelse = reverted_node.orelse, reverted_node.body
+#             reverted_node.test = reverted_node.test.operand
+#             return reverted_node
 class IfStatementSwapMutator(MutationOperator):
     """
     A mutation operator that swaps the order of the conditional branches in an if statement.
@@ -498,22 +536,32 @@ class IfStatementSwapMutator(MutationOperator):
     def __init__(self):
         super().__init__()
         self.target_type = ast.If
-        pass
 
     def mutate_node(self, node):
         if isinstance(node, ast.If):
             mutated_node = copy.deepcopy(node)
             mutated_node.body, mutated_node.orelse = mutated_node.orelse, mutated_node.body
-            mutated_node.test = ast.UnaryOp(op=ast.Not(), operand=node.test)
+            
+            if isinstance(node.test, ast.UnaryOp) and isinstance(node.test.op, ast.Not):
+                mutated_node.test = node.test.operand
+            else:
+                mutated_node.test = ast.UnaryOp(op=ast.Not(), operand=node.test)
+            
+            fix_indentation(mutated_node)
             yield mutated_node
 
     def revert_node(self, node):
         if isinstance(node, ast.If):
             reverted_node = copy.deepcopy(node)
             reverted_node.body, reverted_node.orelse = reverted_node.orelse, reverted_node.body
-            reverted_node.test = reverted_node.test.operand
+            
+            if isinstance(node.test, ast.UnaryOp) and isinstance(node.test.op, ast.Not):
+                reverted_node.test = node.test.operand
+            else:
+                reverted_node.test = ast.UnaryOp(op=ast.Not(), operand=node.test)
+            
             return reverted_node
-        
+
 
 class FunctionCallArgumentSwapMutator(MutationOperator):
     """
