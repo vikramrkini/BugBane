@@ -246,12 +246,18 @@ def run_bugbane(parser):
                         load_file(original_filename,mutants[index])
                         if run_file_against_tests(original_filename,test_folder_path+'/'+test_filename,False):
                             number_of_test_passed += 1
-                            file = open("report.html", "a")
-                            file.write(f"<h3> {original_filename} -- {test_filename} </h3>")
-                            file.write(html_diff)
-                            file.close()
+                            if config.report:
+                                file = open("mutants-passed.html", "a")
+                                file.write(f"<h3> {original_filename} -- {test_filename} </h3>")
+                                file.write(html_diff)
+                                file.close()
                         else:
                             number_of_test_failed += 1
+                            if config.report:
+                                file = open("mutants-failed.html", "a")
+                                file.write(f"<h3> {original_filename} -- {test_filename} </h3>")
+                                file.write(html_diff)
+                                file.close()
                 
                 original_filename = load_file(original_filename,copied_file)
 
