@@ -52,5 +52,5 @@ BeautifulSoup4-master/
 flask/
 scrapy/
 ansible-devel/
-# beautifulsoup4/
+beautifulsoup4/
 .vscode/ 
